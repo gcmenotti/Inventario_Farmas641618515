@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Inventory User Cycle</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://cdn.syncfusion.com/ej2/material.css">
+    <script src="https://cdn.syncfusion.com/ej2/dist/ej2.min.js"></script>
+</head>
+<body>
+    <div id="container" style="visibility:hidden;">
+        <div id="Grid"></div>
+    </div>
+
+    <script>
+        var ele = document.getElementById("container");
+
+        let usersMap = {};
+        let cyclesMap = {};
+        let usersDropdownData = [];
+        let cyclesDropdownData = [];
+
+        function fetchAuxiliaryData() {
+            Promise.all([
+                fetch("https://web.reprico.work/fmasinv/Inventory/GetAllUsers").then(
+                    (res) => res.json()
+                ),
+                fetch("https://web.reprico.work/fmasinv/Inventory/GetAllCycles").then(
+                    (res) => res.json()
+                ),
+            ]).then(([users, cycles]) => {
+                usersMap = users.reduce(
+                    (acc, user) => ({ ...acc, [user.id]: user.userName }),
+                    {}
+                );
+                cyclesMap = cycles.reduce(
+                    (acc, cycle) => ({ ...acc, [cycle.id]: cycle.cycleName }),
+                    {}
+                );
+                usersDropdownData = users.map(user => ({ id: user.id, name: user.userName }));
+                cyclesDropdownData = cycles.map(cycle => ({ id: cycle.id, name: cycle.cycleName }));
+
+                fetchDataAndUpdateGrid();
+            });
+        }
+
+        if (ele) {
+            ele.style.visibility = "visible";
+        }
+
+        function fetchDataAndUpdateGrid() {
+            fetch(
+                "https://web.reprico.work/fmasinv/Inventory/GetAllInventoryUser_Cycle"
+            )
+                .then((response) => response.json())
+                .then((data) => {
+                    var grid = new ej.grids.Grid({
+                        dataSource: data,
+                        editSettings: {
+                            allowEditing: true,
+                            allowAdding: true,
+                            allowDeleting: true,
+                            mode: "Normal",
+                        },
+                        toolbar: ["Add", "Delete", "Cancel"],
+                        columns: [
+                            {
+                                field: "id",
+                                headerText: "ID",
+                                textAlign: "Left",
+                                width: 120,
+                                type: "number",
+                                allowEditing: true,
+                                allowAdding: true,
+                                allowDeleting: true,
+                            },
+                            {
+                                field: "userId",
+                                headerText: "User Name",
+                                valueAccessor: (field, data, column) =>
+                                    usersMap[data.userId] || data.userId,
+                                editType: "dropdownedit",
+                                edit: {
+                                    params: {
+                                        dataSource: usersDropdownData,
+                                        fields: { value: "id", text: "name" },
+                                        query: new ej.data.Query(),
+                                    },
+                                },
+                            },
+                            {
+                                field: "cycleId",
+                                headerText: "Cycle Name",
+                                valueAccessor: (field, data, column) =>
+                                    cyclesMap[data.cycleId] || data.cycleId,
+                                editType: "dropdownedit",
+                                edit: {
+                                    params: {
+                                        dataSource: cyclesDropdownData,
+                                        fields: { value: "id", text: "name" },
+                                        query: new ej.data.Query(),
+                                    },
+                                },
+                            },
+
+                            {
+                                headerText: 'Accion', width: 120, commands: [
+                                    { type: 'Edit', buttonOption: { cssClass: 'e-flat', iconCss: 'e-edit e-icons' } },
+                                    { type: 'Save', buttonOption: { cssClass: 'e-flat', iconCss: 'e-update e-icons' } },
+                                    { type: 'Cancel', buttonOption: { cssClass: 'e-flat', iconCss: 'e-cancel-icon e-icons' } }]
+                            }
+
+                        ],
+                        actionBegin: function (args) {
+                            if (args.requestType === "delete") {
+                                const confirmation = window.confirm(
+                                    "Estas seguro que quieres borrar?"
+                                );
+                                if (!confirmation) {
+                                    args.cancel = true;
+                                    return;
+                                }
+
+                                fetch(
+                                    "https://web.reprico.work/fmasinv/Inventory/Delete_InventoryUser_Cycle",
+                                    {
+                                        method: "POST",
+                                        headers: {
+                                            "Content-Type": "application/json",
+                                        },
+                                        body: JSON.stringify(args.data[0]),
+                                    }
+                                )
+                                    .then((res) => res.json())
+                                    .then((updatedData) => {
+                                        location.reload();
+                                        console.log(res);
+                                    })
+                                    .catch((err) => {
+                                        console.error("Error deleting data:", err);
+                                    });
+                            }
+
+                           
+                        },
+                        actionComplete: function (args) {
+                            if (args.requestType === "save") {
+                                const confirmation = window.confirm("Estas seguro?");
+                                if (!confirmation) {
+                                    args.cancel = true;
+                                    return;
+                                }
+                                const userData = {
+                                    id: args.data.id,
+                                    userId: args.data.userId,
+                                    cycleId: args.data.cycleId,
+                                };
+                                console.log(userData);
+                                args.cancel = true;
+
+                                fetch(
+                                    "https://web.reprico.work/fmasinv/Inventory/UpsertInventoryUser",
+                                    {
+                                        method: "POST",
+                                        headers: {
+                                            "Content-Type": "application/json",
+                                        },
+                                        body: JSON.stringify(userData),
+                                    }
+                                )
+                                    .then((res) => res.json())
+                                    .then((updatedData) => {
+                                        location.reload();
+                                    })
+                                    .catch((err) => {
+                                        console.error("Error updating data:", err);
+                                    });
+                            }
+                        },
+                    });
+
+                    grid.appendTo("#Grid");
+                })
+                .catch((error) => {
+                    console.error("Error fetching data:", error);
+                });
+        }
+
+        fetchAuxiliaryData();
+    </script>
+</body>
+</html>

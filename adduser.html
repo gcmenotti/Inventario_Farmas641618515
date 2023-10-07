@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document 3</title>
+</head>
+<link href="https://cdn.syncfusion.com/ej2/ej2-base/styles/material.css" rel="stylesheet">
+<link href="https://cdn.syncfusion.com/ej2/ej2-grids/styles/material.css" rel="stylesheet">
+<link href="https://cdn.syncfusion.com/ej2/ej2-buttons/styles/material.css" rel="stylesheet">
+<link href="https://cdn.syncfusion.com/ej2/ej2-popups/styles/material.css" rel="stylesheet">
+<link href="https://cdn.syncfusion.com/ej2/ej2-navigations/styles/material.css" rel="stylesheet">
+<link href="https://cdn.syncfusion.com/ej2/ej2-dropdowns/styles/material.css" rel="stylesheet">
+<link href="https://cdn.syncfusion.com/ej2/ej2-lists/styles/material.css" rel="stylesheet">
+<link href="https://cdn.syncfusion.com/ej2/ej2-inputs/styles/material.css" rel="stylesheet">
+<link href="https://cdn.syncfusion.com/ej2/ej2-calendars/styles/material.css" rel="stylesheet">
+<link href="https://cdn.syncfusion.com/ej2/ej2-splitbuttons/styles/material.css" rel="stylesheet">
+<link href="https://cdn.syncfusion.com/ej2/ej2-base/styles/material.css" rel="stylesheet">
+<link href="https://cdn.syncfusion.com/ej2/ej2-inputs/styles/material.css" rel="stylesheet">
+<link href="https://cdn.syncfusion.com/ej2/ej2-dropdowns/styles/material.css" rel="stylesheet">
+
+<style>
+    .e-row[aria-selected="true"] .e-customizedExpandcell {
+        background-color: #e0e0e0;
+    }
+
+    .e-grid.e-gridhover tr[role='row']:hover {
+        background-color: #eee;
+    }
+
+    .e-expand::before {
+        content: '\e5b8';
+    }
+
+    .loader {
+        border: 16px solid #f3f3f3;
+        border-radius: 50%;
+        border-top: 16px solid #3498db;
+        width: 120px;
+        height: 120px;
+        -webkit-animation: spin 2s linear infinite; /* Safari */
+        animation: spin 2s linear infinite;
+    }
+</style>
+<body>
+  
+<div id="container">
+    <div id="Grid"></div>
+</div>
+<script src="https://cdn.syncfusion.com/ej2/dist/ej2.min.js" type="text/javascript"></script>
+<script>
+var ele = document.getElementById('container');
+if(ele) {
+  ele.style.visibility = "visible";
+    } 
+
+ function fetchDataAndUpdateGrid() {
+    fetch('https://web.reprico.work/fmasinv/Inventory/GetAllInventoryUsers')
+        .then(response => response.json())
+        .then(data => {
+            var grid = new ej.grids.Grid({
+                dataSource: data,
+               
+                editSettings: { allowEditing: true, allowAdding: true, mode: 'Normal' },
+                columns: [
+                    { field: 'id', headerText: 'ID', textAlign: 'Left', width: 120, type: 'number', allowEditing: false },
+                    { field: 'fullName', width: 140, headerText: 'Nombre Completo', type: 'string',width: 220 },
+                    { field: 'userName', headerText: 'Usuario', textAlign: 'Left', width: 120 },
+                    { field: 'password', headerText: 'Contrasena', textAlign: 'Left', width: 120, editType: 'passwordedit' },                    
+                    { 
+                        field: 'active', // make sure the field name matches the data source field exactly
+                        headerText: 'Activo', 
+                        textAlign: 'Center', 
+                        type: 'boolean', 
+                        width: 100,
+                        editType: 'booleanedit', 
+                        displayAsCheckBox: true // displays the content as a checkbox 
+                    },
+                    { 
+                        headerText: 'Accion', 
+                        width: 120, 
+                        commands: [
+                            { type: 'Edit', buttonOption: { iconCss: 'e-icons e-edit', cssClass: 'e-flat' } },
+                            { type: 'Save', buttonOption: { iconCss: 'e-icons e-update', cssClass: 'e-flat' } },
+                            { type: 'Cancel', buttonOption: { iconCss: 'e-icons e-cancel-icon', cssClass: 'e-flat' } }
+                        ]
+                    }
+                    
+                ],
+                actionBegin: function (args) {
+                    if (args.requestType === 'save') {
+                        const confirmation = window.confirm("Estas seguro?");
+                        if (!confirmation) {
+                            args.cancel = true;
+                            return;
+                        }
+                        const userData = {
+                            id : args.data.id,
+                            fullName: args.data.fullName,
+                            userName: args.data.userName,
+                            password: args.data.password,  
+                            active: args.data.active
+                        };
+
+                        args.cancel = true;
+
+                        fetch('https://web.reprico.work/fmasinv/Inventory/UpsertInventoryUser', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(userData)
+                         
+                        })
+                            .then(res => res.json())
+                            .then(updatedData => { 
+                                location.reload();
+                            })
+                            .catch(err => {
+                                console.error("Error updating data:", err);
+                            });
+                    }
+                }
+            });
+
+            grid.appendTo('#Grid');
+        })
+        .catch(error => {
+            console.error("Error fetching data:", error);
+        });
+    }
+
+ fetchDataAndUpdateGrid();
+</script>
+    
+</body>
+</html>
